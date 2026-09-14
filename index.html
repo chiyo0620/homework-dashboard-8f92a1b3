@@ -13,6 +13,8 @@
       color: #f8fafc;
       min-height: 100vh;
       padding: 1.5rem;
+      user-select: none;
+      -webkit-user-select: none;
     }
 
     header {
@@ -105,7 +107,6 @@
     .badge-normal { background: #3b82f6; color: #fff; }
     .badge-overdue { background: #a855f7; color: #fff; }
 
-    /* 期限超過カード専用の削除ボタン */
     .delete-btn {
       background: transparent;
       color: #94a3b8;
@@ -147,7 +148,6 @@
     .clear-message h2 { font-size: 2.5rem; color: #4ade80; margin-bottom: 1rem; }
     .clear-message p { font-size: 1.2rem; color: #94a3b8; }
 
-    /* 非表示解除ボタンのスタイル */
     .reset-area {
       text-align: center;
       margin-top: 3rem;
@@ -168,22 +168,126 @@
       background: #334155;
       color: #f8fafc;
     }
+
+    /* --- スタンバイ（待機画面）用スタイル --- */
+    #standbyScreen {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background-color: #020617;
+      color: #334155;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      z-index: 9999;
+    }
+    .standby-clock {
+      font-size: 5rem;
+      font-weight: 200;
+      color: #1e293b;
+      letter-spacing: 0.05em;
+    }
+    .standby-text {
+      font-size: 1rem;
+      color: #475569;
+      margin-top: 1rem;
+    }
+    .standby-hint {
+      font-size: 0.8rem;
+      color: #334155;
+      margin-top: 2rem;
+    }
   </style>
 </head>
 <body>
 
-  <header>
-    <h1>📡 宿題アンテナ</h1>
-    <div class="updated" id="updatedAt">確認中...</div>
-  </header>
+  <!-- スタンバイ（時間外の省電力画面） -->
+  <div id="standbyScreen" onclick="wakeUpTemporarily()">
+    <div class="standby-clock" id="standbyClock">00:00</div>
+    <div class="standby-text" id="standbyNextText">🌙 待機中（表示時間外）</div>
+    <div class="standby-hint">タップすると10分間表示します</div>
+  </div>
 
-  <main id="container"></main>
+  <!-- 通常のダッシュボード -->
+  <div id="app">
+    <header>
+      <h1>📡 宿題アンテナ</h1>
+      <div class="updated" id="updatedAt">確認中...</div>
+    </header>
 
-  <div class="reset-area" id="resetArea" style="display: none;">
-    <button class="reset-btn" onclick="clearHiddenTasks()">🗑 削除した課題の非表示をリセット</button>
+    <main id="container"></main>
+
+    <div class="reset-area" id="resetArea" style="display: none;">
+      <button class="reset-btn" onclick="clearHiddenTasks()">🗑 削除した課題の非表示をリセット</button>
+    </div>
   </div>
 
   <script>
+    // 一時表示の有効期限（ミリ秒）
+    let temporaryWakeUntil = 0;
+
+    // 表示時間帯の判定（AM 6:30〜8:30 / PM 3:30〜10:00）
+    function isWithinDisplaySchedule() {
+      const now = new Date();
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+      // 朝: 06:30 (390分) 〜 08:30 (510分)
+      const isMorning = (currentMinutes >= 6 * 60 + 30) && (currentMinutes <= 8 * 60 + 30);
+      // 夕方・夜: 15:30 (930分) 〜 22:00 (1320分)
+      const isEvening = (currentMinutes >= 15 * 60 + 30) && (currentMinutes <= 22 * 60);
+
+      return isMorning || isEvening;
+    }
+
+    // 次の開始予定テキストの作成
+    function getNextScheduleText() {
+      const now = new Date();
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+      if (currentMinutes < 6 * 60 + 30) {
+        return "☀️ 次回表示: 6:30〜";
+      } else if (currentMinutes < 15 * 60 + 30) {
+        return "🌇 次回表示: 15:30〜";
+      } else {
+        return "☀️ 次回表示: あす朝 6:30〜";
+      }
+    }
+
+    // 画面タップで10分間一時表示する
+    window.wakeUpTemporarily = function() {
+      temporaryWakeUntil = Date.now() + (10 * 60 * 1000);
+      updateDisplayState();
+    };
+
+    // 表示モードの切り替え制御
+    function updateDisplayState() {
+      const standbyEl = document.getElementById('standbyScreen');
+      const appEl = document.getElementById('app');
+      const now = new Date();
+
+      const hours = String(now.getHours()).padStart(2, '0');
+      const mins = String(now.getMinutes()).padStart(2, '0');
+      document.getElementById('standbyClock').textContent = `${hours}:${mins}`;
+      document.getElementById('standbyNextText').textContent = getNextScheduleText();
+
+      const shouldShow = isWithinDisplaySchedule() || (Date.now() < temporaryWakeUntil);
+
+      if (shouldShow) {
+        standbyEl.style.display = 'none';
+        appEl.style.display = 'block';
+      } else {
+        standbyEl.style.display = 'flex';
+        appEl.style.display = 'none';
+      }
+    }
+
+    // 1分ごとにスケジュール判定をチェック
+    setInterval(updateDisplayState, 30000);
+
     function getHiddenTasks() {
       return JSON.parse(localStorage.getItem('hiddenTasks') || '[]');
     }
@@ -286,7 +390,6 @@
           return { ...item, dateObj: d, category };
         });
 
-        // 30日以上前の課題を除外 ＆ 非表示にしたIDを除外
         items = items.filter(i => i.dateObj >= thirtyDaysAgo && !hiddenTasks.includes(i.id));
 
         document.getElementById('resetArea').style.display = hiddenTasks.length > 0 ? 'block' : 'none';
@@ -359,6 +462,8 @@
       }
     }
 
+    // 初回実行
+    updateDisplayState();
     loadHomework();
   </script>
 </body>
