@@ -57,10 +57,12 @@ def run():
             print("送信完了。マイページへの遷移を待機しています...")
             page.wait_for_url("**/_/**", timeout=30000)
             page.wait_for_selector(".courseListBody", state="attached", timeout=20000)
-            time.sleep(3)
+            
+            # 初期描画が安定するまで少し長めに待機
+            page.wait_for_load_state("networkidle")
+            time.sleep(2)
             print("✅ マイページが表示されました。全教科のデータ抽出を開始します。")
 
-            # バッジの有無に関わらず全教科を取得
             courses = page.locator(".courseListBody .roundListItem.courseListItem")
             course_count = courses.count()
             print(f"📌 教科を {course_count} 件検出しました。")
@@ -76,13 +78,34 @@ def run():
                     subject_name = subject_el.inner_text().strip() if subject_el.count() > 0 else f"教科{i+1}"
                     
                     print(f"➡️ [{i+1}/{course_count}] 教科「{subject_name}」を確認中...")
-                    course.click(force=True)
                     
+                    # 【改善点1】クリックが反映され、aria-selected="true" になるまで最大3回リトライ
+                    for attempt in range(3):
+                        course.click(force=True)
+                        time.sleep(0.5)
+                        is_selected = course.get_attribute("aria-selected") == "true"
+                        if is_selected:
+                            break
+                        time.sleep(0.5)
+
+                    # 【改善点2】提出箱タブを取得し、確実にアクティブ化（aria-selected="true"）する
                     submission_tab = page.locator('div[role="tab"][id$="-submissionBox"]').first
                     submission_tab.wait_for(state="attached", timeout=10000)
-                    submission_tab.click(force=True)
                     
-                    time.sleep(1.5)
+                    for attempt in range(3):
+                        if submission_tab.get_attribute("aria-selected") == "true":
+                            break
+                        submission_tab.click(force=True)
+                        time.sleep(0.5)
+
+                    # 【改善点3】セクション、または「提出箱」の中身がDOMに現れるまで動的に待機
+                    try:
+                        page.locator('.courseMenuBody .roundListSection, .courseMenuBody .emptyView').first.wait_for(state="attached", timeout=4000)
+                    except:
+                        pass
+
+                    # レンダリング完了のための最小限のクッション
+                    time.sleep(1.0)
                     
                     sections = page.locator('.courseMenuBody .roundListSection')
                     sec_count = sections.count()
