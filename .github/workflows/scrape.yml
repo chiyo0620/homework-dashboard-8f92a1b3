@@ -1,18 +1,24 @@
-name: Check Loylo Homework
+name: Scrape LoiloNote
 
 on:
   schedule:
-    # 日本時間 10:52 (UTC 01:52) に自動実行
-    - cron: '52 1 * * *'
+    # 定期実行: JST 7:00, 17:00, 20:00
+    - cron: '0 22,8,11 * * *'
   workflow_dispatch:
-permissions:
-  contents: write
+
+# 同時実行を防ぐ設定（実行中に新たなリクエストが来た場合は前の処理をキャンセル）
+concurrency:
+  group: "scraper"
+  cancel-in-progress: true
 
 jobs:
-  build:
+  scrape:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # リベースを行うためにすべての履歴を取得
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -25,25 +31,20 @@ jobs:
           pip install playwright
           playwright install chromium
 
-      - name: Run Scraper
+      - name: Run scraper
         env:
           LOILO_SCHOOL_ID: ${{ secrets.LOILO_SCHOOL_ID }}
           LOILO_USER_ID: ${{ secrets.LOILO_USER_ID }}
           LOILO_PASSWORD: ${{ secrets.LOILO_PASSWORD }}
         run: python scraper.py
 
-      # 実行スナップショットを history フォルダへ自動保存
-      - name: Archive snapshot
-        if: success()
-        run: |
-          mkdir -p history
-          TIMESTAMP=$(date +'%Y%m%d_%H%M%S')
-          cp data.json "history/data_${TIMESTAMP}.json"
-
-      - name: Commit and Push if updated
-        if: success()
+      - name: Commit and push changes
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           git add data.json history/
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Update homework data and archive [skip ci]" && git push)
+          # 変更がない場合は正常終了
+          git commit -m "Update homework data and archive [skip ci]" || exit 0
+          # 競合回避のため最新の履歴をリベースして取り込む
+          git pull --rebase origin main
+          git push
