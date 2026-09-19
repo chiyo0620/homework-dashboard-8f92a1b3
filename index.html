@@ -22,7 +22,7 @@
       border-bottom: 1px solid #334155;
     }
     h1 { font-size: 2rem; font-weight: 800; letter-spacing: 0.05em; }
-    .updated { font-size: 0.85rem; color: #94a3b8; margin-top: 0.4rem; }
+    .updated { font-size: 0.9rem; color: #94a3b8; margin-top: 0.4rem; font-weight: 500; }
 
     .section-title {
       font-size: 1.3rem;
@@ -318,8 +318,22 @@
         const res = await fetch('./data.json?t=' + Date.now());
         const data = await res.json();
 
-        const localDate = new Date(data.updated_at);
-        const jstString = localDate.toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" });
+        // UTC時刻文字列を確実に解釈し、日本時間（24時間表記）へ変換
+        let isoStr = data.updated_at || '';
+        if (isoStr && !isoStr.endsWith('Z') && !isoStr.includes('+')) {
+          isoStr = isoStr.replace(' ', 'T') + 'Z';
+        }
+        const localDate = new Date(isoStr);
+        const jstString = localDate.toLocaleString("ja-JP", { 
+          timeZone: "Asia/Tokyo",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: false
+        });
         document.getElementById('updatedAt').textContent = '最終更新: ' + jstString;
         
         const container = document.getElementById('container');
