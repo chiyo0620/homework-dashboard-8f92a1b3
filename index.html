@@ -1,65 +1,432 @@
-<script>
-// GitHub Actions の手動実行を呼び出す関数
-async function triggerWorkflowSync() {
-  const syncBtn = document.getElementById('syncBtn');
-  const syncStatus = document.getElementById('syncStatus');
-
-  // ※ セキュリティのためトークンは localStorage または初回プロンプト入力で保持
-  let token = localStorage.getItem('gh_pat_token');
-  if (!token) {
-    token = prompt('初回のみ：GitHub Personal Access Token（repo権限）を入力してください:');
-    if (token) {
-      localStorage.setItem('gh_pat_token', token.trim());
-    } else {
-      return;
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="refresh" content="300">
+  <title>家族用 宿題アンテナ</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: #0f172a;
+      color: #f8fafc;
+      min-height: 100vh;
+      padding: 1.5rem;
     }
-  }
 
-  // アカウント名とリポジトリ名を設定済み
-  const owner = "chiyo0620"; 
-  const repo = "homework-dashboard-8f92a1b3"; 
-  const workflowId = "scrape.yml";
+    header {
+      text-align: center;
+      margin-bottom: 2rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid #334155;
+    }
+    h1 { font-size: 2rem; font-weight: 800; letter-spacing: 0.05em; }
+    .updated { font-size: 0.85rem; color: #94a3b8; margin-top: 0.4rem; }
 
-  syncBtn.disabled = true;
-  syncBtn.style.opacity = "0.6";
-  syncStatus.textContent = "スクレイパーを起動中...";
+    .section-title {
+      font-size: 1.3rem;
+      font-weight: bold;
+      margin: 1.8rem 0 1rem 0;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .section-title.urgent { color: #f87171; }
+    .section-title.warning { color: #fbbf24; }
+    .section-title.normal { color: #38bdf8; }
+    .section-title.overdue { color: #c084fc; }
 
-  try {
-    const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/actions/workflows/${workflowId}/dispatches`, {
-      method: "POST",
-      headers: {
-        "Accept": "application/vnd.github.v3+json",
-        "Authorization": `Bearer ${token}`
-      },
-      body: JSON.stringify({ ref: "main" })
-    });
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 1rem;
+    }
 
-    if (res.ok) {
-      syncStatus.textContent = "取得処理を開始しました（約2分で反映されます）...";
-      
-      // GitHub側の処理完了を待つため、120秒(120000ミリ秒)後に自動リロード
-      setTimeout(async () => {
-        syncStatus.textContent = "データを再読み込みしています...";
-        await loadHomework(); // 最新の data.json を読み込み
-        
-        // 読み込み完了後にテキストを更新し、ボタンを有効化
-        syncStatus.textContent = "✅ 最新データに更新しました！";
+    .card {
+      background: #1e293b;
+      border-radius: 12px;
+      padding: 1.2rem;
+      border-left: 6px solid #64748b;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+      position: relative;
+    }
+
+    .card.status-urgent {
+      border-left-color: #ef4444;
+      background: linear-gradient(135deg, #1e293b 70%, #451a1a 100%);
+      animation: pulse 2s infinite;
+    }
+    .card.status-warning {
+      border-left-color: #f59e0b;
+      background: linear-gradient(135deg, #1e293b 70%, #3a2e19 100%);
+    }
+    .card.status-normal {
+      border-left-color: #3b82f6;
+    }
+    .card.status-overdue {
+      border-left-color: #a855f7;
+      background: #181e29;
+    }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+      70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.6rem;
+    }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .subject-badge {
+      background: #334155;
+      color: #38bdf8;
+      font-size: 0.95rem;
+      font-weight: bold;
+      padding: 0.35rem 0.75rem;
+      border-radius: 6px;
+    }
+    .status-badge {
+      font-size: 0.75rem;
+      font-weight: bold;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+    }
+    .badge-urgent { background: #ef4444; color: #fff; }
+    .badge-warning { background: #f59e0b; color: #fff; }
+    .badge-normal { background: #3b82f6; color: #fff; }
+    .badge-overdue { background: #a855f7; color: #fff; }
+
+    .delete-btn {
+      background: transparent;
+      color: #94a3b8;
+      border: 1px solid #475569;
+      border-radius: 4px;
+      padding: 0.25rem 0.55rem;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .delete-btn:hover {
+      background: #ef4444;
+      color: white;
+      border-color: #ef4444;
+    }
+
+    .title {
+      font-size: 1.15rem;
+      font-weight: bold;
+      margin-bottom: 0.8rem;
+      line-height: 1.4;
+      color: #f8fafc;
+    }
+    .deadline {
+      font-size: 0.95rem;
+      color: #cbd5e1;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .clear-message {
+      text-align: center;
+      padding: 4rem 1rem;
+      background: #1e293b;
+      border-radius: 16px;
+      margin-top: 2rem;
+    }
+    .clear-message h2 { font-size: 2.5rem; color: #4ade80; margin-bottom: 1rem; }
+    .clear-message p { font-size: 1.2rem; color: #94a3b8; }
+
+    .reset-area {
+      text-align: center;
+      margin-top: 3rem;
+      padding-top: 1rem;
+      border-top: 1px solid #334155;
+    }
+    .reset-btn {
+      background: #1e293b;
+      color: #cbd5e1;
+      border: 1px solid #334155;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .reset-btn:hover {
+      background: #334155;
+      color: #f8fafc;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>📡 宿題アンテナ</h1>
+    <div class="updated" id="updatedAt">確認中...</div>
+    
+    <div class="sync-panel" style="margin-top: 10px; display: flex; justify-content: center; gap: 10px; align-items: center;">
+      <button id="syncBtn" onclick="triggerWorkflowSync()" style="
+        background: #2563eb;
+        color: white;
+        border: none;
+        padding: 0.4rem 0.9rem;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        font-weight: bold;
+        cursor: pointer;
+        transition: background 0.2s;
+      ">🔄 ロイロノートから最新データを取得</button>
+      <span id="syncStatus" style="font-size: 0.8rem; color: #94a3b8;"></span>
+    </div>
+  </header>
+
+  <main id="container"></main>
+
+  <div class="reset-area" id="resetArea" style="display: none;">
+    <button class="reset-btn" onclick="clearHiddenTasks()">🗑 削除した課題の非表示をリセット</button>
+  </div>
+
+  <script>
+    async function triggerWorkflowSync() {
+      const syncBtn = document.getElementById('syncBtn');
+      const syncStatus = document.getElementById('syncStatus');
+
+      let token = localStorage.getItem('gh_pat_token');
+      if (!token) {
+        token = prompt('初回のみ：GitHub Personal Access Token（repo権限）を入力してください:');
+        if (token) {
+          localStorage.setItem('gh_pat_token', token.trim());
+        } else {
+          return;
+        }
+      }
+
+      const owner = "chiyo0620"; 
+      const repo = "homework-dashboard-8f92a1b3"; 
+      const workflowId = "scrape.yml";
+
+      syncBtn.disabled = true;
+      syncBtn.style.opacity = "0.6";
+      syncStatus.textContent = "スクレイパーを起動中...";
+
+      try {
+        const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/actions/workflows/${workflowId}/dispatches`, {
+          method: "POST",
+          headers: {
+            "Accept": "application/vnd.github.v3+json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify({ ref: "main" })
+        });
+
+        if (res.ok) {
+          syncStatus.textContent = "取得処理を開始しました（約2分で反映されます）...";
+          
+          setTimeout(async () => {
+            syncStatus.textContent = "データを再読み込みしています...";
+            await loadHomework(); 
+            
+            syncStatus.textContent = "✅ 最新データに更新しました！";
+            syncBtn.disabled = false;
+            syncBtn.style.opacity = "1.0";
+            
+            setTimeout(() => {
+              syncStatus.textContent = "";
+            }, 3000);
+          }, 120000);
+        } else {
+          throw new Error(`起動失敗 (ステータス: ${res.status})`);
+        }
+      } catch (err) {
+        console.error(err);
+        syncStatus.textContent = "エラー: 起動に失敗しました。トークン権限を確認してください。";
         syncBtn.disabled = false;
         syncBtn.style.opacity = "1.0";
-        
-        // 3秒後に完了メッセージを消去
-        setTimeout(() => {
-          syncStatus.textContent = "";
-        }, 3000);
-      }, 120000);
-    } else {
-      throw new Error(`起動失敗 (ステータス: ${res.status})`);
+      }
     }
-  } catch (err) {
-    console.error(err);
-    syncStatus.textContent = "エラー: 起動に失敗しました。トークン権限を確認してください。";
-    syncBtn.disabled = false;
-    syncBtn.style.opacity = "1.0";
-  }
-}
-</script>
+
+    function getHiddenTasks() {
+      return JSON.parse(localStorage.getItem('hiddenTasks') || '[]');
+    }
+
+    window.hideTask = function(btnElement) {
+      const taskId = btnElement.getAttribute('data-id');
+      const hidden = getHiddenTasks();
+      if (!hidden.includes(taskId)) {
+        hidden.push(taskId);
+        localStorage.setItem('hiddenTasks', JSON.stringify(hidden));
+        loadHomework();
+      }
+    };
+
+    window.clearHiddenTasks = function() {
+      if (confirm('削除（非表示）にした課題をすべて元に戻しますか？')) {
+        localStorage.removeItem('hiddenTasks');
+        loadHomework();
+      }
+    };
+
+    function parseDeadline(str) {
+      if (!str) return new Date(8640000000000000);
+      const now = new Date();
+      let year = now.getFullYear();
+      let month = now.getMonth();
+      let day = now.getDate();
+      let hour = 23, minute = 59;
+
+      if (str.includes("今日")) {
+        year = now.getFullYear();
+        month = now.getMonth();
+        day = now.getDate();
+      } else if (str.includes("明日")) {
+        const tomorrow = new Date(now.getTime() + (24 * 60 * 60 * 1000));
+        year = tomorrow.getFullYear();
+        month = tomorrow.getMonth();
+        day = tomorrow.getDate();
+      } else {
+        const yearMatch = str.match(/(\d{4})年/);
+        if (yearMatch) year = parseInt(yearMatch[1]);
+
+        const mdMatch = str.match(/(\d{1,2})月(\d{1,2})日/) || str.match(/(\d{1,2})\/(\d{1,2})/);
+        if (mdMatch) {
+          month = parseInt(mdMatch[1]) - 1;
+          day = parseInt(mdMatch[2]);
+        }
+      }
+
+      const timeMatch = str.match(/(\d{1,2}):(\d{2})/);
+      if (timeMatch) {
+        hour = parseInt(timeMatch[1]);
+        minute = parseInt(timeMatch[2]);
+      }
+
+      return new Date(year, month, day, hour, minute);
+    }
+
+    async function loadHomework() {
+      try {
+        const res = await fetch('./data.json?t=' + Date.now());
+        const data = await res.json();
+
+        const localDate = new Date(data.updated_at);
+        const jstString = localDate.toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" });
+        document.getElementById('updatedAt').textContent = '最終更新: ' + jstString;
+        
+        const container = document.getElementById('container');
+        container.innerHTML = '';
+
+        if (!data.items || data.items.length === 0) {
+          container.innerHTML = `
+            <div class="clear-message">
+              <h2>🎉 宿題完了！</h2>
+              <p>現在、未提出の課題はありません。</p>
+            </div>
+          `;
+          document.getElementById('resetArea').style.display = 'none';
+          return;
+        }
+
+        const hiddenTasks = getHiddenTasks();
+        const now = new Date();
+        const tomorrow15 = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 15, 0, 0);
+        const threeDaysLater = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 3, 23, 59, 59);
+        const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
+
+        let items = data.items.map(item => {
+          const d = parseDeadline(item.deadline);
+          let category = 'normal';
+
+          if (d < now) {
+            category = 'overdue';
+          } else if (d <= tomorrow15) {
+            category = 'urgent';
+          } else if (d <= threeDaysLater) {
+            category = 'warning';
+          }
+
+          return { ...item, dateObj: d, category };
+        });
+
+        items = items.filter(i => i.dateObj >= thirtyDaysAgo && !hiddenTasks.includes(i.id));
+
+        document.getElementById('resetArea').style.display = hiddenTasks.length > 0 ? 'block' : 'none';
+
+        if (items.length === 0) {
+          container.innerHTML = `
+            <div class="clear-message">
+              <h2>🎉 宿題完了！</h2>
+              <p>現在、未提出の課題はありません。</p>
+            </div>
+          `;
+          return;
+        }
+
+        items.sort((a, b) => a.dateObj - b.dateObj);
+
+        const categories = [
+          { key: 'urgent', title: '🚨【至急】今日〜明日15時締め切り', class: 'urgent' },
+          { key: 'warning', title: '⚠️【注意】締め切り3日前以内', class: 'warning' },
+          { key: 'normal', title: '📘 今後の宿題', class: 'normal' },
+          { key: 'overdue', title: '⏰【期限超過】締め切りを過ぎた宿題', class: 'overdue' }
+        ];
+
+        categories.forEach(cat => {
+          const catItems = items.filter(i => i.category === cat.key);
+          if (catItems.length === 0) return;
+
+          const titleEl = document.createElement('div');
+          titleEl.className = `section-title ${cat.class}`;
+          titleEl.textContent = `${cat.title} (${catItems.length}件)`;
+          container.appendChild(titleEl);
+
+          const grid = document.createElement('div');
+          grid.className = 'card-grid';
+
+          catItems.forEach(item => {
+            const card = document.createElement('div');
+            card.className = `card status-${item.category}`;
+
+            let badgeLabel = '通常';
+            let badgeClass = 'badge-normal';
+            if (item.category === 'urgent') { badgeLabel = '至急'; badgeClass = 'badge-urgent'; }
+            if (item.category === 'warning') { badgeLabel = '3日前'; badgeClass = 'badge-warning'; }
+            if (item.category === 'overdue') { badgeLabel = '期限切'; badgeClass = 'badge-overdue'; }
+
+            const deleteBtnHtml = `<button class="delete-btn" data-id="${item.id}" onclick="hideTask(this)">✖ 削除</button>`;
+
+            card.innerHTML = `
+              <div class="card-header">
+                <div class="header-left">
+                  <span class="subject-badge">${item.subject}</span>
+                  <span class="status-badge ${badgeClass}">${badgeLabel}</span>
+                </div>
+                ${deleteBtnHtml}
+              </div>
+              <div class="title">${item.title}</div>
+              <div class="deadline">🕒 締切: ${item.deadline || '指定なし'}</div>
+            `;
+            grid.appendChild(card);
+          });
+
+          container.appendChild(grid);
+        });
+
+      } catch (err) {
+        console.error("データ読み込みエラー:", err);
+      }
+    }
+
+    loadHomework();
+  </script>
+</body>
+</html>
