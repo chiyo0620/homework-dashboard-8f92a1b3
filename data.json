@@ -1,6 +1,6 @@
 {
-  "updated_at": "2026-09-23 00:06:45",
-  "count": 41,
+  "updated_at": "2026-09-23 13:26:30",
+  "count": 42,
   "items": [
     {
       "id": "Communication_2026年4月10日(金)",
@@ -37,6 +37,18 @@
       "subject": "Grammar",
       "title": "タテヨコ#15フル",
       "deadline": "明日 22:25"
+    },
+    {
+      "id": "Reading_音読　chapter1",
+      "subject": "Reading",
+      "title": "音読　chapter1",
+      "deadline": "10月15日(木) 22:00"
+    },
+    {
+      "id": "Reading_音読　introduction",
+      "subject": "Reading",
+      "title": "音読　introduction",
+      "deadline": "10月15日(木) 22:00"
     },
     {
       "id": "Reading_2026年4月10日(金)",
@@ -133,12 +145,6 @@
       "subject": "幾何（2学期）",
       "title": "2026年8月29日(土)",
       "deadline": "2026年8月29日(土)"
-    },
-    {
-      "id": "代数（2学期）_9月16日の宿題_プリント(No.9 ※正負の数)の裏",
-      "subject": "代数（2学期）",
-      "title": "9月16日の宿題_プリント(No.9 ※正負の数)の裏",
-      "deadline": "今日 22:00"
     },
     {
       "id": "代数（2学期）_9月17日の宿題_プリント(No.10 ※正負の数)の裏",
