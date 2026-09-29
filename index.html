@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="refresh" content="300">
   <title>家族用 宿題アンテナ</title>
   <style>
     :root {
@@ -365,11 +366,13 @@
   <header>
     <div class="header-left">
       <h1>📡 宿題アンテナ</h1>
-      <div id="syncStatus" style="font-size: 0.85rem; color: #4ade80; font-weight: bold; margin-top: 4px;">データ読み込み中...</div>
+      <div class="updated" id="updatedAt">確認中...</div>
+      <div id="syncStatus" style="font-size: 0.85rem; color: #4ade80; font-weight: bold; margin-top: 4px;"></div>
     </div>
     <div class="header-actions">
       <button class="btn btn-accent" onclick="openModal('taskModal')">✏️ 宿題タスクを追加</button>
       <button class="btn btn-secondary" onclick="openModal('testModal')">📅 小テストを登録</button>
+      <button class="btn btn-primary" id="syncBtn" onclick="triggerWorkflowSync()">🔄 ロイロから同期</button>
     </div>
   </header>
 
@@ -500,6 +503,7 @@
     const REPO = "homework-dashboard-8f92a1b3";
     const USER_DATA_PATH = "user_data.json";
 
+    let rawHomeworkItems = [];
     let userDataSha = null;
     let userData = { tests: [], manual_tasks: [], hidden_tasks: [] };
 
@@ -510,6 +514,34 @@
         if (token) localStorage.setItem('gh_pat_token', token.trim());
       }
       return token ? token.trim() : null;
+    }
+
+    // --- メインデータ（data.json と user_data.json）の読み込み ---
+    async function loadAllData() {
+      try {
+        const res = await fetch('./data.json?t=' + Date.now());
+        if (res.ok) {
+          const data = await res.json();
+          rawHomeworkItems = data.items || [];
+          
+          let isoStr = data.updated_at || '';
+          if (isoStr && !isoStr.endsWith('Z') && !isoStr.includes('+')) {
+            isoStr = isoStr.replace(' ', 'T') + 'Z';
+          }
+          if (isoStr) {
+            const localDate = new Date(isoStr);
+            const jstString = localDate.toLocaleString("ja-JP", { 
+              timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false
+            });
+            document.getElementById('updatedAt').textContent = '最終抽出: ' + jstString;
+          }
+        }
+      } catch (err) {
+        console.error("ロイロデータ読み込みエラー:", err);
+      }
+
+      await fetchUserData(); // クラウドから同期データを取得
+      renderApp();
     }
 
     // --- クラウドからユーザーデータを取得 ---
@@ -726,8 +758,8 @@
 
       renderAllTestsModal(upcomingTests);
 
-      // 2. 宿題タスクのマージ＆分類（手動タスクのみ）
-      let allTasks = [...userData.manual_tasks];
+      // 2. 宿題タスクのマージ＆分類（抽出タスク ＋ 手動タスク）
+      let allTasks = [...rawHomeworkItems, ...userData.manual_tasks];
       const tomorrow15 = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 15, 0, 0);
       const threeDaysLater = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 3, 23, 59, 59);
       const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
@@ -917,13 +949,47 @@
       await saveUserData();
     };
 
-    // 初期起動
-    async function initializeApp() {
-      await fetchUserData();
-      renderApp();
+    // --- ロイロノート スクレイパー同期（GitHub Actions 起動） ---
+    async function triggerWorkflowSync() {
+      const syncBtn = document.getElementById('syncBtn');
+      const syncStatus = document.getElementById('syncStatus');
+      const token = getToken();
+      if (!token) return;
+
+      syncBtn.disabled = true; syncBtn.style.opacity = "0.6";
+      syncStatus.textContent = "🔄 スクレイパーを起動中...";
+      syncStatus.style.color = "#38bdf8";
+
+      try {
+        const res = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/actions/workflows/scrape.yml/dispatches`, {
+          method: "POST",
+          headers: { "Accept": "application/vnd.github.v3+json", "Authorization": `Bearer ${token}` },
+          body: JSON.stringify({ ref: "main" })
+        });
+
+        if (res.ok) {
+          syncStatus.textContent = "⏳ 抽出処理を開始しました（約2分で反映）...";
+          setTimeout(async () => {
+            syncStatus.textContent = "データを再読み込みしています...";
+            await loadAllData(); 
+            syncStatus.textContent = "✅ 最新データに更新しました！";
+            syncStatus.style.color = "#4ade80";
+            syncBtn.disabled = false; syncBtn.style.opacity = "1.0";
+            setTimeout(() => { syncStatus.textContent = ""; }, 3000);
+          }, 120000);
+        } else {
+          throw new Error(`起動失敗`);
+        }
+      } catch (err) {
+        console.error(err);
+        syncStatus.textContent = "❌ 起動エラー。Tokenの権限を確認してください。";
+        syncStatus.style.color = "#ef4444";
+        syncBtn.disabled = false; syncBtn.style.opacity = "1.0";
+      }
     }
 
-    initializeApp();
+    // 初期起動
+    loadAllData();
   </script>
 </body>
 </html>
