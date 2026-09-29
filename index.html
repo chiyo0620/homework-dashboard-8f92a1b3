@@ -3,7 +3,6 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="refresh" content="300">
   <title>家族用 宿題アンテナ</title>
   <style>
     :root {
@@ -366,13 +365,11 @@
   <header>
     <div class="header-left">
       <h1>📡 宿題アンテナ</h1>
-      <div class="updated" id="updatedAt">確認中...</div>
-      <div id="syncStatus" style="font-size: 0.85rem; color: #4ade80; font-weight: bold; margin-top: 4px;"></div>
+      <div id="syncStatus" style="font-size: 0.85rem; color: #4ade80; font-weight: bold; margin-top: 4px;">データ読み込み中...</div>
     </div>
     <div class="header-actions">
       <button class="btn btn-accent" onclick="openModal('taskModal')">✏️ 宿題タスクを追加</button>
       <button class="btn btn-secondary" onclick="openModal('testModal')">📅 小テストを登録</button>
-      <button class="btn btn-primary" id="syncBtn" onclick="triggerWorkflowSync()">🔄 ロイロから同期</button>
     </div>
   </header>
 
@@ -382,9 +379,7 @@
       <span>📅 直近の小テスト予定</span>
       <button class="btn btn-secondary" style="font-size:0.75rem; padding:0.2rem 0.5rem;" onclick="openModal('allTestsModal')">📋 すべてのテストを見る (<span id="allTestCount">0</span>)</button>
     </div>
-    <div class="test-row-wrapper" id="testRowContainer">
-      <!-- JavaScriptで動的生成 -->
-    </div>
+    <div class="test-row-wrapper" id="testRowContainer"></div>
   </section>
 
   <main class="dashboard-layout">
@@ -436,13 +431,13 @@
 
   <!-- リセットボタンエリア -->
   <div id="resetArea" style="display:none; text-align: center; margin-top: 3rem; padding-top: 1rem; border-top: 1px solid #334155;">
-    <button class="btn btn-secondary" onclick="clearHiddenTasks()">🗑 削除した課題（非表示）をクラウドからリセット</button>
+    <button class="btn btn-secondary" onclick="clearHiddenTasks()">🗑 完了（非表示）にした課題をクラウドからリセット</button>
   </div>
 
   <!-- モーダル：手動宿題タスク追加 -->
   <div class="modal-backdrop" id="taskModal">
     <div class="modal-content">
-      <div class="modal-title">✏️ ロイロ以外の宿題を追加</div>
+      <div class="modal-title">✏️ 宿題を追加</div>
       <div class="form-group">
         <label>教科</label>
         <input type="text" id="manualSubject" class="form-control" placeholder="例: 算数プリント, 自主学習, 理科, 社会">
@@ -505,8 +500,6 @@
     const REPO = "homework-dashboard-8f92a1b3";
     const USER_DATA_PATH = "user_data.json";
 
-    // アプリケーションの状態
-    let rawHomeworkItems = [];
     let userDataSha = null;
     let userData = { tests: [], manual_tasks: [], hidden_tasks: [] };
 
@@ -532,16 +525,16 @@
         if (res.ok) {
           const fileInfo = await res.json();
           userDataSha = fileInfo.sha;
-          // 日本語対応のBase64デコード
           const decoded = decodeURIComponent(escape(atob(fileInfo.content)));
           userData = JSON.parse(decoded);
+          document.getElementById('syncStatus').textContent = "✅ 最新のデータを取得しました";
         } else if (res.status === 404) {
-          // ファイルがまだ存在しない場合
           userData = { tests: [], manual_tasks: [], hidden_tasks: [] };
+          document.getElementById('syncStatus').textContent = "✅ 新規データとして初期化完了";
         } else {
-          // トークンが無い等でAPIが弾かれた場合はPages経由でフォールバック取得
           const fb = await fetch('./' + USER_DATA_PATH + '?t=' + Date.now());
           if(fb.ok) userData = await fb.json();
+          document.getElementById('syncStatus').textContent = "⚠️ 読み取り専用モード（キャッシュ表示）";
         }
       } catch (e) {
         console.error("ユーザーデータの取得失敗:", e);
@@ -549,12 +542,14 @@
           const fb = await fetch('./' + USER_DATA_PATH + '?t=' + Date.now());
           if(fb.ok) userData = await fb.json();
         } catch(e2) {}
+        document.getElementById('syncStatus').textContent = "⚠️ 読み取り専用モード（キャッシュ表示）";
       }
 
-      // プロパティの互換性確保
       if (!userData.tests) userData.tests = [];
       if (!userData.manual_tasks) userData.manual_tasks = [];
       if (!userData.hidden_tasks) userData.hidden_tasks = [];
+      
+      setTimeout(() => { document.getElementById('syncStatus').textContent = ""; }, 3000);
     }
 
     // --- クラウドへユーザーデータを保存（完全同期） ---
@@ -570,7 +565,7 @@
       const encoded = btoa(unescape(encodeURIComponent(contentStr)));
 
       const body = {
-        message: "Update user sync data",
+        message: "Update manual task data",
         content: encoded,
         branch: "main"
       };
@@ -609,7 +604,6 @@
         return false;
       }
     }
-
 
     // --- 教科色分け判定 ---
     function getSubjectClass(subject) {
@@ -654,32 +648,6 @@
       const timeMatch = str.match(/(\d{1,2}):(\d{2})/);
       if (timeMatch) { hour = parseInt(timeMatch[1]); minute = parseInt(timeMatch[2]); }
       return new Date(year, month, day, hour, minute);
-    }
-
-    // --- メインデータ読み込み ---
-    async function loadAllData() {
-      try {
-        const res = await fetch('./data.json?t=' + Date.now());
-        if (res.ok) {
-          const data = await res.json();
-          rawHomeworkItems = data.items || [];
-          
-          let isoStr = data.updated_at || '';
-          if (isoStr && !isoStr.endsWith('Z') && !isoStr.includes('+')) {
-            isoStr = isoStr.replace(' ', 'T') + 'Z';
-          }
-          const localDate = new Date(isoStr);
-          const jstString = localDate.toLocaleString("ja-JP", { 
-            timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false
-          });
-          document.getElementById('updatedAt').textContent = '最終抽出: ' + jstString;
-        }
-      } catch (err) {
-        console.error("ロイロデータ読み込みエラー:", err);
-      }
-
-      await fetchUserData(); // クラウドから同期データを取得
-      renderApp();
     }
 
     // --- 画面描画ロジック ---
@@ -758,8 +726,8 @@
 
       renderAllTestsModal(upcomingTests);
 
-      // 2. 宿題タスクのマージ＆分類
-      let allTasks = [...rawHomeworkItems, ...userData.manual_tasks];
+      // 2. 宿題タスクのマージ＆分類（手動タスクのみ）
+      let allTasks = [...userData.manual_tasks];
       const tomorrow15 = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 15, 0, 0);
       const threeDaysLater = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 3, 23, 59, 59);
       const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
@@ -883,7 +851,6 @@
     function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
     // --- 楽観的UI更新を伴うデータ操作（完全同期ロジック） ---
-
     window.hideTask = async function(taskId) {
       if (!userData.hidden_tasks.includes(taskId)) {
         userData.hidden_tasks.push(taskId);
@@ -893,7 +860,7 @@
     };
 
     window.clearHiddenTasks = async function() {
-      if (confirm('削除（非表示）にした課題をすべて元に戻しますか？\n（クラウド上の設定もリセットされます）')) {
+      if (confirm('完了（非表示）にした課題をすべて元に戻しますか？\n（クラウド上の設定もリセットされます）')) {
         userData.hidden_tasks = [];
         renderApp();
         await saveUserData();
@@ -950,47 +917,13 @@
       await saveUserData();
     };
 
-    // --- ロイロノート スクレイパー同期（GitHub Actions 起動） ---
-    async function triggerWorkflowSync() {
-      const syncBtn = document.getElementById('syncBtn');
-      const syncStatus = document.getElementById('syncStatus');
-      const token = getToken();
-      if (!token) return;
-
-      syncBtn.disabled = true; syncBtn.style.opacity = "0.6";
-      syncStatus.textContent = "🔄 スクレイパーを起動中...";
-      syncStatus.style.color = "#38bdf8";
-
-      try {
-        const res = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/actions/workflows/scrape.yml/dispatches`, {
-          method: "POST",
-          headers: { "Accept": "application/vnd.github.v3+json", "Authorization": `Bearer ${token}` },
-          body: JSON.stringify({ ref: "main" })
-        });
-
-        if (res.ok) {
-          syncStatus.textContent = "⏳ 抽出処理を開始しました（約2分で反映）...";
-          setTimeout(async () => {
-            syncStatus.textContent = "データを再読み込みしています...";
-            await loadAllData(); 
-            syncStatus.textContent = "✅ 最新データに更新しました！";
-            syncStatus.style.color = "#4ade80";
-            syncBtn.disabled = false; syncBtn.style.opacity = "1.0";
-            setTimeout(() => { syncStatus.textContent = ""; }, 3000);
-          }, 120000);
-        } else {
-          throw new Error(`起動失敗`);
-        }
-      } catch (err) {
-        console.error(err);
-        syncStatus.textContent = "❌ 起動エラー。Tokenの権限を確認してください。";
-        syncStatus.style.color = "#ef4444";
-        syncBtn.disabled = false; syncBtn.style.opacity = "1.0";
-      }
+    // 初期起動
+    async function initializeApp() {
+      await fetchUserData();
+      renderApp();
     }
 
-    // 初期起動
-    loadAllData();
+    initializeApp();
   </script>
 </body>
 </html>
