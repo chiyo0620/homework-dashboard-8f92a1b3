@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- 5分（300秒）ごとの自動リロード -->
   <meta http-equiv="refresh" content="300">
   <title>家族用 宿題アンテナ</title>
   <style>
@@ -370,6 +371,8 @@
       <div id="syncStatus" style="font-size: 0.85rem; color: #4ade80; font-weight: bold; margin-top: 4px;"></div>
     </div>
     <div class="header-actions">
+      <!-- iPad用：ワンタップで画面・データを最新化するボタン -->
+      <button class="btn btn-secondary" onclick="manualPageRefresh()" title="最新データへ画面更新">🔄 表示更新</button>
       <button class="btn btn-accent" onclick="openModal('taskModal')">✏️ 宿題タスクを追加</button>
       <button class="btn btn-secondary" onclick="openModal('testModal')">📅 小テストを登録</button>
       <button class="btn btn-primary" id="syncBtn" onclick="triggerWorkflowSync()">🔄 ロイロから同期</button>
@@ -386,8 +389,6 @@
   </section>
 
   <main class="dashboard-layout">
-    
-    <!-- 左カラム：今日やること・前日対策・至急タスク -->
     <div class="left-col">
       <div class="column-title urgent">
         <span>🚨 今日のやること（至急・テスト対策）</span>
@@ -396,13 +397,11 @@
       <div class="urgent-stack" id="urgentContainer"></div>
     </div>
 
-    <!-- 右カラム：今後の宿題・期限超過 -->
     <div class="right-col">
       <div class="column-title normal">
         <span>📋 今後の宿題・控えリスト</span>
       </div>
 
-      <!-- 3日前以内 -->
       <div class="list-section">
         <div class="list-header" style="color: #fbbf24;" onclick="toggleCollapse('warningList')">
           <span>⚠️ 3日以内締め切り (<span id="warningCount">0</span>)</span>
@@ -411,7 +410,6 @@
         <div class="list-group" id="warningList"></div>
       </div>
 
-      <!-- 今後の宿題（通常） -->
       <div class="list-section">
         <div class="list-header" style="color: #38bdf8;" onclick="toggleCollapse('normalList')">
           <span>📘 今後の宿題 (<span id="normalCount">0</span>)</span>
@@ -420,7 +418,6 @@
         <div class="list-group" id="normalList"></div>
       </div>
 
-      <!-- 期限超過 -->
       <div class="list-section">
         <div class="list-header" style="color: #c084fc;" onclick="toggleCollapse('overdueList')">
           <span>⏰ 期限を過ぎた宿題 (<span id="overdueCount">0</span>)</span>
@@ -429,15 +426,13 @@
         <div class="list-group" id="overdueList"></div>
       </div>
     </div>
-
   </main>
 
-  <!-- リセットボタンエリア -->
   <div id="resetArea" style="display:none; text-align: center; margin-top: 3rem; padding-top: 1rem; border-top: 1px solid #334155;">
     <button class="btn btn-secondary" onclick="clearHiddenTasks()">🗑 完了（非表示）にした課題をクラウドからリセット</button>
   </div>
 
-  <!-- モーダル：手動宿題タスク追加 -->
+  <!-- 手動宿題追加モーダル -->
   <div class="modal-backdrop" id="taskModal">
     <div class="modal-content">
       <div class="modal-title">✏️ 宿題を追加</div>
@@ -460,7 +455,7 @@
     </div>
   </div>
 
-  <!-- モーダル：小テスト追加 -->
+  <!-- 小テスト追加モーダル -->
   <div class="modal-backdrop" id="testModal">
     <div class="modal-content">
       <div class="modal-title">📅 小テスト予定を追加</div>
@@ -483,7 +478,7 @@
     </div>
   </div>
 
-  <!-- モーダル：小テスト全件一覧 -->
+  <!-- 小テスト全件一覧モーダル -->
   <div class="modal-backdrop" id="allTestsModal">
     <div class="modal-content">
       <div class="modal-title" style="display:flex; justify-content:space-between; align-items:center;">
@@ -498,7 +493,6 @@
   </div>
 
   <script>
-    // --- GitHub 連携設定 ---
     const OWNER = "chiyo0620";
     const REPO = "homework-dashboard-8f92a1b3";
     const USER_DATA_PATH = "user_data.json";
@@ -507,23 +501,39 @@
     let userDataSha = null;
     let userData = { tests: [], manual_tasks: [], hidden_tasks: [] };
 
-    function getToken() {
+    // --- iPad用：手動表示更新関数 ---
+    async function manualPageRefresh() {
+      const syncStatus = document.getElementById('syncStatus');
+      syncStatus.textContent = "🔄 画面を更新しています...";
+      syncStatus.style.color = "#38bdf8";
+      await loadAllData();
+      syncStatus.textContent = "✅ 最新表示に更新しました";
+      syncStatus.style.color = "#4ade80";
+      setTimeout(() => { syncStatus.textContent = ""; }, 2500);
+    }
+
+    // --- iPad用：アプリ復帰時（画面を表示した瞬間）に自動再読み込み ---
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        loadAllData();
+      }
+    });
+
+    function getToken(forcePrompt = false) {
       let token = localStorage.getItem('gh_pat_token');
-      if (!token) {
-        token = prompt('この操作にはGitHub Tokenが必要です。\n初回のみ：GitHub Personal Access Token（repo権限）を入力してください:');
+      if (!token || forcePrompt) {
+        token = prompt('【GitHub Token入力】\n※「repo」と「workflow」の両方の権限にチェックを入れたPersonal Access Tokenを入力してください:');
         if (token) localStorage.setItem('gh_pat_token', token.trim());
       }
       return token ? token.trim() : null;
     }
 
-    // --- メインデータ（data.json と user_data.json）の読み込み ---
     async function loadAllData() {
       try {
         const res = await fetch('./data.json?t=' + Date.now());
         if (res.ok) {
           const data = await res.json();
           rawHomeworkItems = data.items || [];
-          
           let isoStr = data.updated_at || '';
           if (isoStr && !isoStr.endsWith('Z') && !isoStr.includes('+')) {
             isoStr = isoStr.replace(' ', 'T') + 'Z';
@@ -540,11 +550,10 @@
         console.error("ロイロデータ読み込みエラー:", err);
       }
 
-      await fetchUserData(); // クラウドから同期データを取得
+      await fetchUserData();
       renderApp();
     }
 
-    // --- クラウドからユーザーデータを取得 ---
     async function fetchUserData() {
       const token = localStorage.getItem('gh_pat_token');
       const url = `https://api.github.com/repos/${OWNER}/${REPO}/contents/${USER_DATA_PATH}`;
@@ -559,38 +568,33 @@
           userDataSha = fileInfo.sha;
           const decoded = decodeURIComponent(escape(atob(fileInfo.content)));
           userData = JSON.parse(decoded);
-          document.getElementById('syncStatus').textContent = "✅ 最新のデータを取得しました";
         } else if (res.status === 404) {
           userData = { tests: [], manual_tasks: [], hidden_tasks: [] };
-          document.getElementById('syncStatus').textContent = "✅ 新規データとして初期化完了";
         } else {
+          if (res.status === 401 || res.status === 403) {
+            localStorage.removeItem('gh_pat_token');
+          }
           const fb = await fetch('./' + USER_DATA_PATH + '?t=' + Date.now());
           if(fb.ok) userData = await fb.json();
-          document.getElementById('syncStatus').textContent = "⚠️ 読み取り専用モード（キャッシュ表示）";
         }
       } catch (e) {
-        console.error("ユーザーデータの取得失敗:", e);
         try {
           const fb = await fetch('./' + USER_DATA_PATH + '?t=' + Date.now());
           if(fb.ok) userData = await fb.json();
         } catch(e2) {}
-        document.getElementById('syncStatus').textContent = "⚠️ 読み取り専用モード（キャッシュ表示）";
       }
 
       if (!userData.tests) userData.tests = [];
       if (!userData.manual_tasks) userData.manual_tasks = [];
       if (!userData.hidden_tasks) userData.hidden_tasks = [];
-      
-      setTimeout(() => { document.getElementById('syncStatus').textContent = ""; }, 3000);
     }
 
-    // --- クラウドへユーザーデータを保存（完全同期） ---
     async function saveUserData() {
       const token = getToken();
       if (!token) return false;
 
       const syncStatus = document.getElementById('syncStatus');
-      syncStatus.textContent = "☁️ クラウドへ同期中...";
+      syncStatus.textContent = "☁️️ クラウドへ同期中...";
       syncStatus.style.color = "#f59e0b";
 
       const contentStr = JSON.stringify(userData, null, 2);
@@ -622,14 +626,18 @@
           setTimeout(() => { syncStatus.textContent = ""; }, 3000);
           return true;
         } else {
-          const err = await res.json();
-          alert(`保存エラー: ${err.message}`);
+          if (res.status === 401 || res.status === 403 || res.status === 404) {
+            localStorage.removeItem('gh_pat_token');
+            alert("Tokenが無効か権限が不足しています。ページを更新して正しいTokenを再入力してください。");
+          } else {
+            const err = await res.json();
+            alert(`保存エラー: ${err.message}`);
+          }
           syncStatus.textContent = "❌ 同期エラー";
           syncStatus.style.color = "#ef4444";
           return false;
         }
       } catch (e) {
-        console.error(e);
         alert("ネットワークエラーが発生しました。");
         syncStatus.textContent = "❌ 同期エラー";
         syncStatus.style.color = "#ef4444";
@@ -637,7 +645,48 @@
       }
     }
 
-    // --- 教科色分け判定 ---
+    async function triggerWorkflowSync() {
+      const syncBtn = document.getElementById('syncBtn');
+      const syncStatus = document.getElementById('syncStatus');
+      let token = getToken();
+      if (!token) return;
+
+      syncBtn.disabled = true; syncBtn.style.opacity = "0.6";
+      syncStatus.textContent = "🔄 スクレイパーを起動中...";
+      syncStatus.style.color = "#38bdf8";
+
+      try {
+        const res = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/actions/workflows/scrape.yml/dispatches`, {
+          method: "POST",
+          headers: { "Accept": "application/vnd.github.v3+json", "Authorization": `Bearer ${token}` },
+          body: JSON.stringify({ ref: "main" })
+        });
+
+        if (res.ok) {
+          syncStatus.textContent = "⏳ 抽出処理を開始しました（約2分で反映）...";
+          setTimeout(async () => {
+            syncStatus.textContent = "データを再読み込みしています...";
+            await loadAllData(); 
+            syncStatus.textContent = "✅ 最新データに更新しました！";
+            syncStatus.style.color = "#4ade80";
+            syncBtn.disabled = false; syncBtn.style.opacity = "1.0";
+            setTimeout(() => { syncStatus.textContent = ""; }, 3000);
+          }, 120000);
+        } else {
+          if (res.status === 401 || res.status === 403 || res.status === 404) {
+            localStorage.removeItem('gh_pat_token');
+            throw new Error("Tokenの権限(workflow, repo)が不足しています。再入力してください。");
+          }
+          throw new Error(`API起動エラー (HTTP ${res.status})`);
+        }
+      } catch (err) {
+        console.error(err);
+        syncStatus.textContent = `❌ ${err.message}`;
+        syncStatus.style.color = "#ef4444";
+        syncBtn.disabled = false; syncBtn.style.opacity = "1.0";
+      }
+    }
+
     function getSubjectClass(subject) {
       if (!subject) return 'subj-other';
       const s = subject.toLowerCase();
@@ -648,19 +697,13 @@
       if (s.includes('社会')) return 'subj-social';
       return 'subj-other';
     }
-    function getSubjectBorderClass(subject) {
-      return getSubjectClass(subject).replace('subj-', 'border-');
-    }
+    function getSubjectBorderClass(subject) { return getSubjectClass(subject).replace('subj-', 'border-'); }
 
-    // --- 日付の解析 ---
     function parseDeadlineToDate(str) {
       if (!str) return new Date(8640000000000000);
       const now = new Date();
-      let year = now.getFullYear();
-      let month = now.getMonth();
-      let day = now.getDate();
+      let year = now.getFullYear(); let month = now.getMonth(); let day = now.getDate();
       let hour = 23, minute = 59;
-
       if (str.includes("今日")) {
         year = now.getFullYear(); month = now.getMonth(); day = now.getDate();
       } else if (str.includes("明日")) {
@@ -668,9 +711,8 @@
         year = tomorrow.getFullYear(); month = tomorrow.getMonth(); day = tomorrow.getDate();
       } else {
         const isoMatch = str.match(/(\d{4})-(\d{2})-(\d{2})/);
-        if (isoMatch) {
-          year = parseInt(isoMatch[1]); month = parseInt(isoMatch[2]) - 1; day = parseInt(isoMatch[3]);
-        } else {
+        if (isoMatch) { year = parseInt(isoMatch[1]); month = parseInt(isoMatch[2]) - 1; day = parseInt(isoMatch[3]); }
+        else {
           const yearMatch = str.match(/(\d{4})年/);
           if (yearMatch) year = parseInt(yearMatch[1]);
           const mdMatch = str.match(/(\d{1,2})月(\d{1,2})日/) || str.match(/(\d{1,2})\/(\d{1,2})/);
@@ -682,12 +724,10 @@
       return new Date(year, month, day, hour, minute);
     }
 
-    // --- 画面描画ロジック ---
     function renderApp() {
       const now = new Date();
       document.getElementById('resetArea').style.display = userData.hidden_tasks.length > 0 ? 'block' : 'none';
 
-      // 1. 小テストの描画
       const testRowContainer = document.getElementById('testRowContainer');
       testRowContainer.innerHTML = '';
       const autoStudyTasks = [];
@@ -733,7 +773,6 @@
         `;
         testRowContainer.appendChild(card);
 
-        // 前日・当日の自動対策タスク
         if (diffDays === 1 || diffDays === 0) {
           autoStudyTasks.push({
             id: `auto_study_${test.id}`,
@@ -758,7 +797,6 @@
 
       renderAllTestsModal(upcomingTests);
 
-      // 2. 宿題タスクのマージ＆分類（抽出タスク ＋ 手動タスク）
       let allTasks = [...rawHomeworkItems, ...userData.manual_tasks];
       const tomorrow15 = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 15, 0, 0);
       const threeDaysLater = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 3, 23, 59, 59);
@@ -774,11 +812,8 @@
       });
 
       autoStudyTasks.forEach(st => items.push({ ...st, category: 'urgent' }));
-
-      // 非表示＆古いタスクを除外
       items = items.filter(i => i.dateObj >= thirtyDaysAgo && !userData.hidden_tasks.includes(i.id));
 
-      // 3. 左カラム：至急タスク描画
       const urgentItems = items.filter(i => i.category === 'urgent');
       const urgentContainer = document.getElementById('urgentContainer');
       urgentContainer.innerHTML = '';
@@ -817,7 +852,6 @@
         });
       }
 
-      // 4. 右カラム：リスト描画
       renderListGroup('warningList', 'warningCount', items.filter(i => i.category === 'warning'));
       renderListGroup('normalList', 'normalCount', items.filter(i => i.category === 'normal'));
       renderListGroup('overdueList', 'overdueCount', items.filter(i => i.category === 'overdue'));
@@ -871,7 +905,6 @@
       });
     }
 
-    // --- UIトグル操作 ---
     function toggleCollapse(id) {
       const el = document.getElementById(id);
       const arrow = document.getElementById(id + '-arrow');
@@ -882,12 +915,11 @@
     function openModal(id) { document.getElementById(id).classList.add('open'); }
     function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
-    // --- 楽観的UI更新を伴うデータ操作（完全同期ロジック） ---
     window.hideTask = async function(taskId) {
       if (!userData.hidden_tasks.includes(taskId)) {
         userData.hidden_tasks.push(taskId);
-        renderApp(); // 先に画面から消す（楽観的UI更新）
-        await saveUserData(); // 裏でクラウドへ保存
+        renderApp();
+        await saveUserData();
       }
     };
 
@@ -949,47 +981,10 @@
       await saveUserData();
     };
 
-    // --- ロイロノート スクレイパー同期（GitHub Actions 起動） ---
-    async function triggerWorkflowSync() {
-      const syncBtn = document.getElementById('syncBtn');
-      const syncStatus = document.getElementById('syncStatus');
-      const token = getToken();
-      if (!token) return;
-
-      syncBtn.disabled = true; syncBtn.style.opacity = "0.6";
-      syncStatus.textContent = "🔄 スクレイパーを起動中...";
-      syncStatus.style.color = "#38bdf8";
-
-      try {
-        const res = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/actions/workflows/scrape.yml/dispatches`, {
-          method: "POST",
-          headers: { "Accept": "application/vnd.github.v3+json", "Authorization": `Bearer ${token}` },
-          body: JSON.stringify({ ref: "main" })
-        });
-
-        if (res.ok) {
-          syncStatus.textContent = "⏳ 抽出処理を開始しました（約2分で反映）...";
-          setTimeout(async () => {
-            syncStatus.textContent = "データを再読み込みしています...";
-            await loadAllData(); 
-            syncStatus.textContent = "✅ 最新データに更新しました！";
-            syncStatus.style.color = "#4ade80";
-            syncBtn.disabled = false; syncBtn.style.opacity = "1.0";
-            setTimeout(() => { syncStatus.textContent = ""; }, 3000);
-          }, 120000);
-        } else {
-          throw new Error(`起動失敗`);
-        }
-      } catch (err) {
-        console.error(err);
-        syncStatus.textContent = "❌ 起動エラー。Tokenの権限を確認してください。";
-        syncStatus.style.color = "#ef4444";
-        syncBtn.disabled = false; syncBtn.style.opacity = "1.0";
-      }
+    initializeApp();
+    async function initializeApp() {
+      await loadAllData();
     }
-
-    // 初期起動
-    loadAllData();
   </script>
 </body>
 </html>
