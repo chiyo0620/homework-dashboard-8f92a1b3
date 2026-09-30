@@ -25,6 +25,14 @@
       "date": "2026-10-16"
     }
   ],
-  "manual_tasks": [],
+  "manual_tasks": [
+    {
+      "id": "manual_1790759634432",
+      "subject": "漢字ドリル",
+      "title": "11〜−8",
+      "deadline": "10月1日(木) 18:13",
+      "isManual": true
+    }
+  ],
   "hidden_tasks": []
 }
