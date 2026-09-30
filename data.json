@@ -1,6 +1,6 @@
 {
-  "updated_at": "2026-09-29 01:33:35",
-  "count": 42,
+  "updated_at": "2026-09-30 01:31:06",
+  "count": 44,
   "items": [
     {
       "id": "Communication_2026年4月10日(金)",
@@ -12,36 +12,48 @@
       "id": "Grammar_タテヨコ#10フル",
       "subject": "Grammar",
       "title": "タテヨコ#10フル",
-      "deadline": "10月1日(木) 22:15"
+      "deadline": "明日 22:15"
     },
     {
       "id": "Grammar_タテヨコ#11穴埋め",
       "subject": "Grammar",
       "title": "タテヨコ#11穴埋め",
-      "deadline": "10月1日(木) 22:20"
+      "deadline": "明日 22:20"
     },
     {
       "id": "Grammar_タテヨコ#11フル",
       "subject": "Grammar",
       "title": "タテヨコ#11フル",
-      "deadline": "10月1日(木) 22:25"
+      "deadline": "明日 22:25"
     },
     {
       "id": "Grammar_タテヨコ#12",
       "subject": "Grammar",
       "title": "タテヨコ#12",
-      "deadline": "10月1日(木) 23:00"
+      "deadline": "明日 23:00"
     },
     {
       "id": "Grammar_EIF#1",
       "subject": "Grammar",
       "title": "EIF#1",
-      "deadline": "10月1日(木) 23:05"
+      "deadline": "明日 23:05"
+    },
+    {
+      "id": "Reading_授業内容提出（テキスト書き込みなど・問題プリント） chapter 2",
+      "subject": "Reading",
+      "title": "授業内容提出（テキスト書き込みなど・問題プリント） chapter 2",
+      "deadline": "10月5日(月) 10:17"
     },
     {
       "id": "Reading_音読　chapter1",
       "subject": "Reading",
       "title": "音読　chapter1",
+      "deadline": "10月15日(木) 22:00"
+    },
+    {
+      "id": "Reading_音読　chapter2",
+      "subject": "Reading",
+      "title": "音読　chapter2",
       "deadline": "10月15日(木) 22:00"
     },
     {
@@ -144,7 +156,7 @@
       "id": "代数（2学期）_9月24日の宿題_プリント(No.12 ※正負の数)の裏",
       "subject": "代数（2学期）",
       "title": "9月24日の宿題_プリント(No.12 ※正負の数)の裏",
-      "deadline": "10月1日(木) 22:00"
+      "deadline": "明日 22:00"
     },
     {
       "id": "代数（2学期）_自主学習ノート（9/28～10/4、※代数幾何共通）",
