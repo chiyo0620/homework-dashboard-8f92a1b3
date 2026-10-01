@@ -1,6 +1,6 @@
 {
-  "updated_at": "2026-10-01 00:56:30",
-  "count": 45,
+  "updated_at": "2026-10-01 08:16:06",
+  "count": 46,
   "items": [
     {
       "id": "Communication_2026年4月10日(金)",
@@ -39,9 +39,15 @@
       "deadline": "今日 23:05"
     },
     {
-      "id": "Reading_授業内容提出（テキスト書き込みなど・問題プリント） chapter 2",
+      "id": "Grammar_EIF#2",
+      "subject": "Grammar",
+      "title": "EIF#2",
+      "deadline": "10月5日(月) 22:00"
+    },
+    {
+      "id": "Reading_授業内容提出　chapter 2",
       "subject": "Reading",
-      "title": "授業内容提出（テキスト書き込みなど・問題プリント） chapter 2",
+      "title": "授業内容提出　chapter 2",
       "deadline": "10月5日(月) 10:17"
     },
     {
@@ -144,7 +150,7 @@
       "id": "幾何（2学期）_9月28日の宿題_プリント(No.2 ※平面図形)の「表」",
       "subject": "幾何（2学期）",
       "title": "9月28日の宿題_プリント(No.2 ※平面図形)の「表」",
-      "deadline": "明日 14:50"
+      "deadline": "明日 22:00"
     },
     {
       "id": "幾何（2学期）_2026年8月29日(土)",
