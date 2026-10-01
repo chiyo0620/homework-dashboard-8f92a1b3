@@ -1,12 +1,10 @@
 name: Scrape LoiloNote
 
 on:
-  schedule:
-    # 定期実行: JST 7:00, 17:00, 20:00
-    - cron: '0 22,8,11 * * *'
+  # 定期自動実行（schedule / cron）を完全に削除し、手動起動のみ受付
   workflow_dispatch:
 
-# GitHub Actionsからdata.jsonを上書き保存するための権限を付与
+# GitHub Actionsからdata.jsonを上書き保存するための権限
 permissions:
   contents: write
 
@@ -45,7 +43,6 @@ jobs:
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          # historyフォルダの追加処理を削除し、data.jsonのみを保存対象に変更
           git add data.json
           git commit -m "Update homework data [skip ci]" || exit 0
           git pull --rebase origin main
