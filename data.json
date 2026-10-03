@@ -1,6 +1,6 @@
 {
-  "updated_at": "2026-10-03 06:17:57",
-  "count": 46,
+  "updated_at": "2026-10-03 12:21:51",
+  "count": 43,
   "items": [
     {
       "id": "Communication_2026年4月10日(金)",
@@ -21,21 +21,9 @@
       "deadline": "10月5日(月) 10:17"
     },
     {
-      "id": "Reading_音読　chapter1",
-      "subject": "Reading",
-      "title": "音読　chapter1",
-      "deadline": "10月15日(木) 22:00"
-    },
-    {
       "id": "Reading_音読　chapter2",
       "subject": "Reading",
       "title": "音読　chapter2",
-      "deadline": "10月15日(木) 22:00"
-    },
-    {
-      "id": "Reading_音読　introduction",
-      "subject": "Reading",
-      "title": "音読　introduction",
       "deadline": "10月15日(木) 22:00"
     },
     {
@@ -121,12 +109,6 @@
       "subject": "理科2",
       "title": "2026年4月10日(金)",
       "deadline": "2026年4月10日(金)"
-    },
-    {
-      "id": "6年文法_漢字直し3・4",
-      "subject": "6年文法",
-      "title": "漢字直し3・4",
-      "deadline": "10月11日(日) 23:00"
     },
     {
       "id": "6年文法_2026年4月10日(金)",
