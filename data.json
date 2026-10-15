@@ -1,6 +1,6 @@
 {
-  "updated_at": "2026-10-15 10:57:44",
-  "count": 40,
+  "updated_at": "2026-10-15 21:14:05",
+  "count": 42,
   "items": [
     {
       "id": "Communication_2026年4月10日(金)",
@@ -13,6 +13,18 @@
       "subject": "Grammar",
       "title": "EIF#4",
       "deadline": "10月19日(月) 22:00"
+    },
+    {
+      "id": "Reading_音読chapter3 10/17まで",
+      "subject": "Reading",
+      "title": "音読chapter3 10/17まで",
+      "deadline": "明日 22:00"
+    },
+    {
+      "id": "Reading_音読chapter5 10/20まで",
+      "subject": "Reading",
+      "title": "音読chapter5 10/20まで",
+      "deadline": "10月20日(火) 22:00"
     },
     {
       "id": "Reading_2026年4月10日(金)",
