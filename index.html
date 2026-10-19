@@ -180,6 +180,38 @@
       color: #fff;
     }
 
+    /* カレンダーエリア */
+    .calendar-section {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 0.85rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3);
+    }
+    .cal-header {
+      display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;
+    }
+    .cal-title { font-weight: bold; font-size: 1.05rem; }
+    .cal-grid {
+      display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px;
+    }
+    .cal-day-name { text-align: center; font-size: 0.75rem; color: var(--text-sub); font-weight: bold; margin-bottom: 2px;}
+    .cal-cell {
+      background: #0f172a; border-radius: 6px; padding: 0.2rem; min-height: 55px;
+      display: flex; flex-direction: column; align-items: center; border: 1px solid transparent;
+    }
+    .cal-cell.empty { background: transparent; border: none; min-height: 0; }
+    .cal-cell.today { border-color: var(--normal); background: #1e293b; box-shadow: inset 0 0 0 1px var(--normal); }
+    .cal-cell.busy-day { background: rgba(245, 158, 11, 0.15); border-color: rgba(245, 158, 11, 0.3); }
+    .cal-date { font-size: 0.75rem; color: #cbd5e1; margin-bottom: 2px; }
+    .cal-cell.today .cal-date { color: var(--normal); font-weight: bold; }
+    .cal-cell.busy-day .cal-date { color: #fbbf24; font-weight: bold; }
+    .cal-dots { display: flex; flex-wrap: wrap; gap: 3px; justify-content: center; align-items: center; padding: 0 2px;}
+    .cal-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; box-shadow: 0 1px 2px rgba(0,0,0,0.5);}
+    .cal-icon { font-size: 0.75rem; line-height: 1; display: inline-block;}
+    .cal-icon.hanamaru { font-size: 1.2rem; margin-top: -2px;} /* 花丸は少し大きく */
+
     /* メイン2カラムレイアウト */
     .dashboard-layout {
       display: grid;
@@ -379,7 +411,6 @@
     </div>
   </header>
 
-  <!-- 直近の小テスト掲示板エリア -->
   <section class="test-banner-container">
     <div class="test-banner-header">
       <span>📅 直近の小テスト予定</span>
@@ -398,6 +429,9 @@
     </div>
 
     <div class="right-col">
+      <!-- 📅 右カラム上部：月間カレンダーエリア -->
+      <div id="calendarContainer"></div>
+
       <div class="column-title normal">
         <span>📋 今後の宿題・控えリスト</span>
       </div>
@@ -432,10 +466,10 @@
     <button class="btn btn-secondary" onclick="clearHiddenTasks()">🗑 完了（非表示）にした課題をクラウドからリセット</button>
   </div>
 
-  <!-- 手動宿題追加モーダル -->
+  <!-- 各種モーダル -->
   <div class="modal-backdrop" id="taskModal">
     <div class="modal-content">
-      <div class="modal-title">✏️ 宿題を追加</div>
+      <div class="modal-title">✏ 宿題を追加</div>
       <div class="form-group">
         <label>教科</label>
         <input type="text" id="manualSubject" class="form-control" placeholder="例: 算数プリント, 自主学習, 理科, 社会">
@@ -455,7 +489,6 @@
     </div>
   </div>
 
-  <!-- 小テスト追加モーダル -->
   <div class="modal-backdrop" id="testModal">
     <div class="modal-content">
       <div class="modal-title">📅 小テスト予定を追加</div>
@@ -478,7 +511,6 @@
     </div>
   </div>
 
-  <!-- 小テスト全件一覧モーダル -->
   <div class="modal-backdrop" id="allTestsModal">
     <div class="modal-content">
       <div class="modal-title" style="display:flex; justify-content:space-between; align-items:center;">
@@ -500,8 +532,10 @@
     let rawHomeworkItems = [];
     let userDataSha = null;
     let userData = { tests: [], manual_tasks: [], hidden_tasks: [] };
+    
+    // カレンダー表示用：現在表示している月を管理
+    let currentCalDate = new Date();
 
-    // --- iPad用：手動表示更新関数 ---
     async function manualPageRefresh() {
       const syncStatus = document.getElementById('syncStatus');
       syncStatus.textContent = "🔄 画面を更新しています...";
@@ -512,11 +546,8 @@
       setTimeout(() => { syncStatus.textContent = ""; }, 2500);
     }
 
-    // --- iPad用：アプリ復帰時（画面を表示した瞬間）に自動再読み込み ---
     document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") {
-        loadAllData();
-      }
+      if (document.visibilityState === "visible") loadAllData();
     });
 
     function getToken(forcePrompt = false) {
@@ -571,9 +602,7 @@
         } else if (res.status === 404) {
           userData = { tests: [], manual_tasks: [], hidden_tasks: [] };
         } else {
-          if (res.status === 401 || res.status === 403) {
-            localStorage.removeItem('gh_pat_token');
-          }
+          if (res.status === 401 || res.status === 403) localStorage.removeItem('gh_pat_token');
           const fb = await fetch('./' + USER_DATA_PATH + '?t=' + Date.now());
           if(fb.ok) userData = await fb.json();
         }
@@ -594,7 +623,7 @@
       if (!token) return false;
 
       const syncStatus = document.getElementById('syncStatus');
-      syncStatus.textContent = "☁️️ クラウドへ同期中...";
+      syncStatus.textContent = "☁ クラウドへ同期中...";
       syncStatus.style.color = "#f59e0b";
 
       const contentStr = JSON.stringify(userData, null, 2);
@@ -724,6 +753,89 @@
       return new Date(year, month, day, hour, minute);
     }
 
+    // --- カレンダー描画ロジック ---
+    window.changeMonth = function(offset) {
+      currentCalDate.setMonth(currentCalDate.getMonth() + offset);
+      renderApp();
+    }
+
+    function renderCalendar(allItems) {
+      const calContainer = document.getElementById('calendarContainer');
+      const year = currentCalDate.getFullYear();
+      const month = currentCalDate.getMonth();
+      
+      const firstDay = new Date(year, month, 1).getDay(); // 0(Sun) - 6(Sat)
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const today = new Date();
+      
+      // タスクを日付(YYYY-MM-DD)ごとにマッピング
+      const taskMap = {};
+      allItems.forEach(item => {
+        if (!item.dateObj || item.dateObj.getTime() > 8000000000000000) return; 
+        const dStr = `${item.dateObj.getFullYear()}-${String(item.dateObj.getMonth()+1).padStart(2,'0')}-${String(item.dateObj.getDate()).padStart(2,'0')}`;
+        if (!taskMap[dStr]) taskMap[dStr] = [];
+        taskMap[dStr].push(item);
+      });
+
+      let html = `
+        <div class="calendar-section">
+          <div class="cal-header">
+            <button class="btn btn-secondary" style="padding:0.2rem 0.5rem;" onclick="changeMonth(-1)">◀</button>
+            <span class="cal-title">${year}年 ${month+1}月</span>
+            <button class="btn btn-secondary" style="padding:0.2rem 0.5rem;" onclick="changeMonth(1)">▶</button>
+          </div>
+          <div class="cal-grid">
+            <div class="cal-day-name" style="color:#ef4444;">日</div>
+            <div class="cal-day-name">月</div>
+            <div class="cal-day-name">火</div>
+            <div class="cal-day-name">水</div>
+            <div class="cal-day-name">木</div>
+            <div class="cal-day-name">金</div>
+            <div class="cal-day-name" style="color:#38bdf8;">土</div>
+      `;
+
+      for (let i = 0; i < firstDay; i++) {
+        html += `<div class="cal-cell empty"></div>`;
+      }
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dStr = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+        const dayTasks = taskMap[dStr] || [];
+        const isToday = (year === today.getFullYear() && month === today.getMonth() && day === today.getDate());
+        
+        const total = dayTasks.length;
+        const completedCount = dayTasks.filter(t => userData.hidden_tasks.includes(t.id)).length;
+        
+        // ヒートマップ: 3件以上なら忙しい日 (busy-day)
+        let cellClass = "cal-cell";
+        if (isToday) cellClass += " today";
+        if (total >= 3) cellClass += " busy-day";
+
+        html += `<div class="${cellClass}"><div class="cal-date">${day}</div><div class="cal-dots">`;
+        
+        if (total > 0) {
+          if (total === completedCount) {
+            // 全て完了なら花丸
+            html += `<span class="cal-icon hanamaru" title="全タスク完了！">💮</span>`;
+          } else {
+            // 完了タスクは緑チェック、未完了は教科カラードット
+            dayTasks.forEach(t => {
+              if (userData.hidden_tasks.includes(t.id)) {
+                html += `<span class="cal-icon" style="color:#4ade80;" title="${t.title}(完了)">✅</span>`;
+              } else {
+                const subjClass = getSubjectClass(t.subject);
+                html += `<span class="cal-dot ${subjClass}" title="${t.title}"></span>`;
+              }
+            });
+          }
+        }
+        
+        html += `</div></div>`;
+      }
+      html += `</div></div>`;
+      calContainer.innerHTML = html;
+    }
+
     function renderApp() {
       const now = new Date();
       document.getElementById('resetArea').style.display = userData.hidden_tasks.length > 0 ? 'block' : 'none';
@@ -797,6 +909,7 @@
 
       renderAllTestsModal(upcomingTests);
 
+      // 全タスクを集約（自動抽出 ＋ 手動追加）
       let allTasks = [...rawHomeworkItems, ...userData.manual_tasks];
       const tomorrow15 = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 15, 0, 0);
       const threeDaysLater = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 3, 23, 59, 59);
@@ -811,7 +924,13 @@
         return { ...item, dateObj: d, category };
       });
 
+      // テスト対策タスクを追加
       autoStudyTasks.forEach(st => items.push({ ...st, category: 'urgent' }));
+
+      // --- カレンダー描画（非表示フィルタ前のもので描画し、チェックマーク判定する） ---
+      renderCalendar(items);
+
+      // 古いタスクと非表示(完了)タスクを除外してリスト表示へ
       items = items.filter(i => i.dateObj >= thirtyDaysAgo && !userData.hidden_tasks.includes(i.id));
 
       const urgentItems = items.filter(i => i.category === 'urgent');
