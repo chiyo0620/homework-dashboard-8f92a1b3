@@ -3,8 +3,6 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- 5分（300秒）ごとの自動リロード -->
-  <meta http-equiv="refresh" content="300">
   <title>家族用 宿題アンテナ</title>
   <style>
     :root {
@@ -19,12 +17,12 @@
       --study: #10b981;
 
       /* 指定教科カラー */
-      --subj-japanese: #dc2626; /* 国語・文法：赤 */
-      --subj-math:     #2563eb; /* 算数・代数・幾何：青 */
-      --subj-english:  #7c3aed; /* 英語・Grammar・Reading：紫 */
-      --subj-science:  #059669; /* 理科：緑 */
-      --subj-social:   #b45309; /* 社会：茶 */
-      --subj-other:    #475569; /* その他 */
+      --subj-japanese: #dc2626;
+      --subj-math:     #2563eb;
+      --subj-english:  #7c3aed;
+      --subj-science:  #059669;
+      --subj-social:   #b45309;
+      --subj-other:    #475569;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -186,7 +184,7 @@
       border: 1px solid var(--card-border);
       border-radius: 10px;
       padding: 0.85rem;
-      margin-bottom: 1.5rem;
+      margin-bottom: 1rem;
       box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3);
     }
     .cal-header {
@@ -200,17 +198,46 @@
     .cal-cell {
       background: #0f172a; border-radius: 6px; padding: 0.2rem; min-height: 55px;
       display: flex; flex-direction: column; align-items: center; border: 1px solid transparent;
+      cursor: pointer; transition: all 0.2s;
     }
-    .cal-cell.empty { background: transparent; border: none; min-height: 0; }
+    .cal-cell.empty { background: transparent; border: none; min-height: 0; cursor: default; }
+    .cal-cell:hover:not(.empty) { background: #1e2b42; }
     .cal-cell.today { border-color: var(--normal); background: #1e293b; box-shadow: inset 0 0 0 1px var(--normal); }
     .cal-cell.busy-day { background: rgba(245, 158, 11, 0.15); border-color: rgba(245, 158, 11, 0.3); }
-    .cal-date { font-size: 0.75rem; color: #cbd5e1; margin-bottom: 2px; }
+    
+    /* 選択された日付のハイライト */
+    .cal-cell.selected {
+      background: rgba(56, 189, 248, 0.2) !important;
+      border-color: #38bdf8 !important;
+      box-shadow: inset 0 0 0 1px #38bdf8;
+    }
+
+    .cal-date { font-size: 0.75rem; color: #cbd5e1; margin-bottom: 2px; transition: color 0.2s; }
     .cal-cell.today .cal-date { color: var(--normal); font-weight: bold; }
     .cal-cell.busy-day .cal-date { color: #fbbf24; font-weight: bold; }
+    .cal-cell.selected .cal-date { color: #fff; font-weight: bold; }
+    
     .cal-dots { display: flex; flex-wrap: wrap; gap: 3px; justify-content: center; align-items: center; padding: 0 2px;}
     .cal-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; box-shadow: 0 1px 2px rgba(0,0,0,0.5);}
-    .cal-icon { font-size: 0.75rem; line-height: 1; display: inline-block;}
-    .cal-icon.hanamaru { font-size: 1.2rem; margin-top: -2px;} /* 花丸は少し大きく */
+
+    /* 絞り込みバナー */
+    .filter-banner {
+      background: rgba(56, 189, 248, 0.15);
+      border: 1px solid #38bdf8;
+      border-radius: 8px;
+      padding: 0.6rem 1rem;
+      margin-bottom: 1.2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: #f8fafc;
+      font-size: 0.95rem;
+      animation: fadeIn 0.3s ease;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
 
     /* メイン2カラムレイアウト */
     .dashboard-layout {
@@ -431,6 +458,9 @@
     <div class="right-col">
       <!-- 📅 右カラム上部：月間カレンダーエリア -->
       <div id="calendarContainer"></div>
+      
+      <!-- 🎯 フィルター中バナー表示エリア -->
+      <div id="filterBannerContainer"></div>
 
       <div class="column-title normal">
         <span>📋 今後の宿題・控えリスト</span>
@@ -533,8 +563,9 @@
     let userDataSha = null;
     let userData = { tests: [], manual_tasks: [], hidden_tasks: [] };
     
-    // カレンダー表示用：現在表示している月を管理
+    // カレンダー表示用・フィルター用管理変数
     let currentCalDate = new Date();
+    let filterDateStr = null; // 絞り込み対象の日付（例: "2026-10-15"）
 
     async function manualPageRefresh() {
       const syncStatus = document.getElementById('syncStatus');
@@ -753,11 +784,26 @@
       return new Date(year, month, day, hour, minute);
     }
 
-    // --- カレンダー描画ロジック ---
+    // --- カレンダー描画＆フィルター操作ロジック ---
     window.changeMonth = function(offset) {
       currentCalDate.setMonth(currentCalDate.getMonth() + offset);
+      filterDateStr = null; // 月を移動した際はフィルターをリセット
       renderApp();
     }
+
+    window.setFilterDate = function(dStr) {
+      if (filterDateStr === dStr) {
+        filterDateStr = null; // もう一度タップで解除
+      } else {
+        filterDateStr = dStr;
+      }
+      renderApp();
+    };
+
+    window.clearFilterDate = function() {
+      filterDateStr = null;
+      renderApp();
+    };
 
     function renderCalendar(allItems) {
       const calContainer = document.getElementById('calendarContainer');
@@ -768,7 +814,7 @@
       const daysInMonth = new Date(year, month + 1, 0).getDate();
       const today = new Date();
       
-      // タスクを日付(YYYY-MM-DD)ごとにマッピング
+      // タスクを日付ごとにマッピング
       const taskMap = {};
       allItems.forEach(item => {
         if (!item.dateObj || item.dateObj.getTime() > 8000000000000000) return; 
@@ -804,30 +850,20 @@
         const isToday = (year === today.getFullYear() && month === today.getMonth() && day === today.getDate());
         
         const total = dayTasks.length;
-        const completedCount = dayTasks.filter(t => userData.hidden_tasks.includes(t.id)).length;
         
-        // ヒートマップ: 3件以上なら忙しい日 (busy-day)
         let cellClass = "cal-cell";
         if (isToday) cellClass += " today";
         if (total >= 3) cellClass += " busy-day";
+        if (filterDateStr === dStr) cellClass += " selected"; // 選択中ハイライト
 
-        html += `<div class="${cellClass}"><div class="cal-date">${day}</div><div class="cal-dots">`;
+        html += `<div class="${cellClass}" onclick="setFilterDate('${dStr}')"><div class="cal-date">${day}</div><div class="cal-dots">`;
         
+        // 完了状態（チェックマーク等）をなくし、未提出タスクのドットのみを表示
         if (total > 0) {
-          if (total === completedCount) {
-            // 全て完了なら花丸
-            html += `<span class="cal-icon hanamaru" title="全タスク完了！">💮</span>`;
-          } else {
-            // 完了タスクは緑チェック、未完了は教科カラードット
-            dayTasks.forEach(t => {
-              if (userData.hidden_tasks.includes(t.id)) {
-                html += `<span class="cal-icon" style="color:#4ade80;" title="${t.title}(完了)">✅</span>`;
-              } else {
-                const subjClass = getSubjectClass(t.subject);
-                html += `<span class="cal-dot ${subjClass}" title="${t.title}"></span>`;
-              }
-            });
-          }
+          dayTasks.forEach(t => {
+            const subjClass = getSubjectClass(t.subject);
+            html += `<span class="cal-dot ${subjClass}" title="${t.title}"></span>`;
+          });
         }
         
         html += `</div></div>`;
@@ -909,7 +945,7 @@
 
       renderAllTestsModal(upcomingTests);
 
-      // 全タスクを集約（自動抽出 ＋ 手動追加）
+      // 1. 全タスクを集約（自動抽出 ＋ 手動追加 ＋ テスト対策）
       let allTasks = [...rawHomeworkItems, ...userData.manual_tasks];
       const tomorrow15 = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 15, 0, 0);
       const threeDaysLater = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 3, 23, 59, 59);
@@ -924,16 +960,40 @@
         return { ...item, dateObj: d, category };
       });
 
-      // テスト対策タスクを追加
       autoStudyTasks.forEach(st => items.push({ ...st, category: 'urgent' }));
 
-      // --- カレンダー描画（非表示フィルタ前のもので描画し、チェックマーク判定する） ---
-      renderCalendar(items);
-
-      // 古いタスクと非表示(完了)タスクを除外してリスト表示へ
+      // 2. 非表示（削除済）や30日以上前のタスクをカレンダーおよびリストから除外
       items = items.filter(i => i.dateObj >= thirtyDaysAgo && !userData.hidden_tasks.includes(i.id));
 
-      const urgentItems = items.filter(i => i.category === 'urgent');
+      // 3. カレンダーの描画（フィルタリング前＝表示すべき全件のデータで描画）
+      renderCalendar(items);
+
+      // 4. 日付フィルター適用ロジック
+      let displayItems = items;
+      const filterBannerContainer = document.getElementById('filterBannerContainer');
+
+      if (filterDateStr) {
+        // 選択された日付に一致するタスクのみを残す
+        displayItems = items.filter(item => {
+          if (!item.dateObj || item.dateObj.getTime() > 8000000000000000) return false;
+          const itemDStr = `${item.dateObj.getFullYear()}-${String(item.dateObj.getMonth()+1).padStart(2,'0')}-${String(item.dateObj.getDate()).padStart(2,'0')}`;
+          return itemDStr === filterDateStr;
+        });
+
+        // 絞り込み中バナーを表示
+        const [y, m, d] = filterDateStr.split('-');
+        filterBannerContainer.innerHTML = `
+          <div class="filter-banner">
+            <span>📅 <strong>${parseInt(m)}月${parseInt(d)}日</strong> のタスクを表示中</span>
+            <button class="btn btn-primary" style="padding:0.3rem 0.6rem; font-size:0.8rem;" onclick="clearFilterDate()">✖ 全件表示に戻す</button>
+          </div>
+        `;
+      } else {
+        filterBannerContainer.innerHTML = '';
+      }
+
+      // 5. 各エリアへの描画（displayItems＝絞り込み後の配列を使用）
+      const urgentItems = displayItems.filter(i => i.category === 'urgent');
       const urgentContainer = document.getElementById('urgentContainer');
       urgentContainer.innerHTML = '';
       document.getElementById('urgentCountBadge').textContent = `(${urgentItems.length}件)`;
@@ -960,7 +1020,7 @@
                 ${item.isManual ? '<span class="badge-state badge-manual">手動</span>' : ''}
                 ${isStudy ? '<span class="badge-state badge-study">対策</span>' : '<span class="badge-state" style="background:#ef4444; color:#fff;">至急</span>'}
               </div>
-              <button class="delete-btn" onclick="hideTask('${item.id}')">✖ 完了</button>
+              <button class="delete-btn" onclick="hideTask('${item.id}')">✖ 削除</button>
             </div>
             <div class="card-title">${item.title}</div>
             <div class="card-bottom">
@@ -971,9 +1031,9 @@
         });
       }
 
-      renderListGroup('warningList', 'warningCount', items.filter(i => i.category === 'warning'));
-      renderListGroup('normalList', 'normalCount', items.filter(i => i.category === 'normal'));
-      renderListGroup('overdueList', 'overdueCount', items.filter(i => i.category === 'overdue'));
+      renderListGroup('warningList', 'warningCount', displayItems.filter(i => i.category === 'warning'));
+      renderListGroup('normalList', 'normalCount', displayItems.filter(i => i.category === 'normal'));
+      renderListGroup('overdueList', 'overdueCount', displayItems.filter(i => i.category === 'overdue'));
     }
 
     function renderListGroup(containerId, countId, listItems) {
@@ -1043,7 +1103,7 @@
     };
 
     window.clearHiddenTasks = async function() {
-      if (confirm('完了（非表示）にした課題をすべて元に戻しますか？\n（クラウド上の設定もリセットされます）')) {
+      if (confirm('削除（非表示）にした課題をすべて元に戻しますか？\n（クラウド上の設定もリセットされます）')) {
         userData.hidden_tasks = [];
         renderApp();
         await saveUserData();
