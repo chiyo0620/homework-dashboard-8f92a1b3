@@ -1,12 +1,18 @@
 {
-  "updated_at": "2026-11-02 12:36:44",
-  "count": 41,
+  "updated_at": "2026-11-05 06:04:10",
+  "count": 45,
   "items": [
+    {
+      "id": "Communication_jobs worksheet",
+      "subject": "Communication",
+      "title": "jobs worksheet",
+      "deadline": "今日 22:00"
+    },
     {
       "id": "Communication_プレゼン準備　英文のみ",
       "subject": "Communication",
       "title": "プレゼン準備　英文のみ",
-      "deadline": "11月5日(木) 22:05"
+      "deadline": "今日 22:05"
     },
     {
       "id": "Communication_プレゼン完成スライド",
@@ -15,16 +21,34 @@
       "deadline": "11月12日(木) 22:00"
     },
     {
+      "id": "Communication_自分のscriptの音読（抑揚に気を付けたり合間を置くなど本番を想定したもの）",
+      "subject": "Communication",
+      "title": "自分のscriptの音読（抑揚に気を付けたり合間を置くなど本番を想定したもの）",
+      "deadline": "11月15日(日) 22:00"
+    },
+    {
       "id": "Communication_2026年4月10日(金)",
       "subject": "Communication",
       "title": "2026年4月10日(金)",
       "deadline": "2026年4月10日(金)"
     },
     {
+      "id": "Grammar_EIF#6",
+      "subject": "Grammar",
+      "title": "EIF#6",
+      "deadline": "今日 22:00"
+    },
+    {
       "id": "Reading_授業内容　6 はすべてここへ",
       "subject": "Reading",
       "title": "授業内容　6 はすべてここへ",
-      "deadline": "11月6日(金) 22:05"
+      "deadline": "明日 22:05"
+    },
+    {
+      "id": "Reading_音読　8",
+      "subject": "Reading",
+      "title": "音読　8",
+      "deadline": "11月20日(金) 22:05"
     },
     {
       "id": "Reading_音読6",
@@ -159,10 +183,10 @@
       "deadline": "11月8日(日) 22:00"
     },
     {
-      "id": "代数（2学期）_11月4日の宿題_プリント(No.1 ※文字と式)の裏",
+      "id": "代数（2学期）_11月5日の宿題_プリント(No.1 ※文字と式)の裏",
       "subject": "代数（2学期）",
-      "title": "11月4日の宿題_プリント(No.1 ※文字と式)の裏",
-      "deadline": "11月11日(水) 22:00"
+      "title": "11月5日の宿題_プリント(No.1 ※文字と式)の裏",
+      "deadline": "11月12日(木) 22:00"
     },
     {
       "id": "2026年度SI_全体_登場人物の設定",
