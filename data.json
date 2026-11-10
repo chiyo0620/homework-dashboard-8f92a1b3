@@ -1,6 +1,6 @@
 {
-  "updated_at": "2026-11-10 08:13:29",
-  "count": 48,
+  "updated_at": "2026-11-10 10:58:53",
+  "count": 44,
   "items": [
     {
       "id": "Communication_プレゼン完成スライド",
@@ -21,24 +21,6 @@
       "deadline": "2026年4月10日(金)"
     },
     {
-      "id": "Grammar_EIF#6",
-      "subject": "Grammar",
-      "title": "EIF#6",
-      "deadline": "今日 22:00"
-    },
-    {
-      "id": "Grammar_EIF#7",
-      "subject": "Grammar",
-      "title": "EIF#7",
-      "deadline": "今日 22:05"
-    },
-    {
-      "id": "Grammar_EIF#8",
-      "subject": "Grammar",
-      "title": "EIF#8",
-      "deadline": "今日 22:10"
-    },
-    {
       "id": "Reading_音読　8",
       "subject": "Reading",
       "title": "音読　8",
@@ -55,12 +37,6 @@
       "subject": "Reading",
       "title": "音読7",
       "deadline": "11月20日(金) 22:05"
-    },
-    {
-      "id": "Reading_授業内容7はここ",
-      "subject": "Reading",
-      "title": "授業内容7はここ",
-      "deadline": "2026年11月10日(火)"
     },
     {
       "id": "Reading_2026年4月10日(金)",
