@@ -1,12 +1,36 @@
 {
-  "updated_at": "2026-11-16 04:54:54",
-  "count": 42,
+  "updated_at": "2026-11-17 05:33:11",
+  "count": 44,
   "items": [
     {
       "id": "Communication_2026年4月10日(金)",
       "subject": "Communication",
       "title": "2026年4月10日(金)",
       "deadline": "2026年4月10日(金)"
+    },
+    {
+      "id": "Grammar_EIF#9",
+      "subject": "Grammar",
+      "title": "EIF#9",
+      "deadline": "今日 22:00"
+    },
+    {
+      "id": "Grammar_EIF#10",
+      "subject": "Grammar",
+      "title": "EIF#10",
+      "deadline": "今日 22:05"
+    },
+    {
+      "id": "Grammar_EIF#11",
+      "subject": "Grammar",
+      "title": "EIF#11",
+      "deadline": "今日 22:10"
+    },
+    {
+      "id": "Grammar_EIF#12",
+      "subject": "Grammar",
+      "title": "EIF#12",
+      "deadline": "今日 22:15"
     },
     {
       "id": "Reading_音読　8",
@@ -60,13 +84,13 @@
       "id": "国語教科書_ざくろ　意味調べ",
       "subject": "国語教科書",
       "title": "ざくろ　意味調べ",
-      "deadline": "明日 22:00"
+      "deadline": "今日 22:00"
     },
     {
       "id": "国語教科書_ざくろ　初読の感想",
       "subject": "国語教科書",
       "title": "ざくろ　初読の感想",
-      "deadline": "明日 22:00"
+      "deadline": "今日 22:00"
     },
     {
       "id": "国語教科書_二十億光年の孤独　初読の感想",
@@ -129,22 +153,10 @@
       "deadline": "2026年4月10日(金)"
     },
     {
-      "id": "6年文法_漢字直し・四級第一回",
-      "subject": "6年文法",
-      "title": "漢字直し・四級第一回",
-      "deadline": "11月24日(火) 21:00"
-    },
-    {
       "id": "6年文法_2026年4月10日(金)",
       "subject": "6年文法",
       "title": "2026年4月10日(金)",
       "deadline": "2026年4月10日(金)"
-    },
-    {
-      "id": "幾何（2学期）_11月9日の宿題_プリント(No.10 ※平面図形)の裏",
-      "subject": "幾何（2学期）",
-      "title": "11月9日の宿題_プリント(No.10 ※平面図形)の裏",
-      "deadline": "今日 22:00"
     },
     {
       "id": "幾何（2学期）_11月16日の宿題_プリント(No.11 ※平面図形)の裏",
